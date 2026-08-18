@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>入力時間測定サイト</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Noto Sans JP", sans-serif;
+      background: #f4f7fb;
+      color: #222;
+    }
+
+    .container {
+      width: min(900px, 92%);
+      margin: 40px auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1px solid #ccd4df;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 130px;
+      resize: vertical;
+    }
+
+    .answer {
+      margin-top: 18px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 22px 0;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 14px 28px;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #startBtn {
+      background: #2e7d32;
+      color: white;
+    }
+
+    #endBtn {
+      background: #c62828;
+      color: white;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 18px;
+      margin: 12px 0;
+    }
+
+    .timer {
+      text-align: center;
+      font-size: 34px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      margin: 12px 0 4px;
+    }
+
+    #results {
+      display: grid;
+      gap: 10px;
+    }
+
+    .result-item {
+      border: 1px solid #d8dee8;
+      border-radius: 10px;
+      padding: 14px;
+      background: #fafbfd;
+    }
+
+    .result-title {
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .muted {
+      color: #667085;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="container">
+
+    <h1>入力時間測定サイト</h1>
+
+    <!-- 題・解答欄 -->
+    <section class="card">
+
+      <label for="title">題</label>
+      <input
+        id="title"
+        type="text"
+        placeholder="題を入力してください"
+      >
+
+      <div class="answer">
+        <label for="answer1">解答欄 1</label>
+        <textarea
+          id="answer1"
+          placeholder="ここに解答を入力してください"
+        ></textarea>
+      </div>
+
+      <div class="answer">
+        <label for="answer2">解答欄 2</label>
+        <textarea
+          id="answer2"
+          placeholder="ここに解答を入力してください"
+        ></textarea>
+      </div>
+
+      <div class="answer">
+        <label for="answer3">解答欄 3</label>
+        <textarea
+          id="answer3"
+          placeholder="ここに解答を入力してください"
+        ></textarea>
+      </div>
+
+      <div class="answer">
+        <label for="answer4">解答欄 4</label>
+        <textarea
+          id="answer4"
+          placeholder="ここに解答を入力してください"
+        ></textarea>
+      </div>
+
+      <div class="answer">
+        <label for="answer5">解答欄 5</label>
+        <textarea
+          id="answer5"
+          placeholder="ここに解答を入力してください"
+        ></textarea>
+      </div>
+
+    </section>
+
+
+    <!-- タイマー -->
+    <section class="card">
+
+      <div class="status" id="status">
+        まだ入力を開始していません
+      </div>
+
+      <div class="timer" id="timer">
+        00:00.0
+      </div>
+
+      <div class="buttons">
+
+        <button id="startBtn">
+          入力開始
+        </button>
+
+        <button id="endBtn" disabled>
+          入力終了
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- 測定結果 -->
+    <section class="card">
+
+      <h2>測定結果</h2>
+
+      <div id="results">
+
+        <div class="muted">
+          「入力終了」を押すと、
+          ここに結果が表示されます。
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <script>
+
+    // HTMLの要素を取得
+    const startBtn = document.getElementById("startBtn");
+    const endBtn = document.getElementById("endBtn");
+    const timer = document.getElementById("timer");
+    const status = document.getElementById("status");
+    const results = document.getElementById("results");
+    const title = document.getElementById("title");
+
+    // 入力開始時刻
+    let startTime = null;
+
+    // タイマー更新用
+    let intervalId = null;
+
+
+    // 時間を「分:秒.0.1秒」に変換
+    function formatTime(ms) {
+
+      const totalTenths = Math.floor(ms / 100);
+
+      const tenths = totalTenths % 10;
+
+      const totalSeconds =
+        Math.floor(totalTenths / 10);
+
+      const seconds =
+        totalSeconds % 60;
+
+      const minutes =
+        Math.floor(totalSeconds / 60);
+
+      return (
+        String(minutes).padStart(2, "0")
+        + ":"
+        + String(seconds).padStart(2, "0")
+        + "."
+        + tenths
+      );
+    }
+
+
+    // タイマーを更新
+    function updateTimer() {
+
+      if (startTime !== null) {
+
+        const elapsed =
+          performance.now() - startTime;
+
+        timer.textContent =
+          formatTime(elapsed);
+      }
+    }
+
+
+    // 「入力開始」を押したとき
+    startBtn.addEventListener("click", () => {
+
+      // 現在時刻を記録
+      startTime = performance.now();
+
+      // 表示をリセット
+      timer.textContent = "00:00.0";
+
+      status.textContent = "入力中…";
+
+      // ボタンを変更
+      startBtn.disabled = true;
+      endBtn.disabled = false;
+
+      // タイマー開始
+      clearInterval(intervalId);
+
+      intervalId =
+        setInterval(updateTimer, 100);
+    });
+
+
+    // 「入力終了」を押したとき
+    endBtn.addEventListener("click", () => {
+
+      if (startTime === null) {
+        return;
+      }
+
+      // 経過時間を計算
+      const elapsed =
+        performance.now() - startTime;
+
+      // タイマー停止
+      clearInterval(intervalId);
+
+      // 最終時間を表示
+      timer.textContent =
+        formatTime(elapsed);
+
+      status.textContent =
+        "入力終了";
+
+      // ボタンを元に戻す
+      startBtn.disabled = false;
+      endBtn.disabled = true;
+
+
+      // 結果を作成
+      const item =
+        document.createElement("div");
+
+      item.className =
+        "result-item";
+
+
+      // 題
+      const resultTitle =
+        document.createElement("div");
+
+      resultTitle.className =
+        "result-title";
+
+      resultTitle.textContent =
+        title.value.trim() || "題未入力";
+
+
+      // 入力時間
+      const resultTime =
+        document.createElement("div");
+
+      resultTime.textContent =
+        "入力時間：" + formatTime(elapsed);
+
+
+      // 終了時刻
+      const resultDate =
+        document.createElement("div");
+
+      resultDate.className =
+        "muted";
+
+      resultDate.textContent =
+        "終了時刻：" +
+        new Date().toLocaleString("ja-JP");
+
+
+      // 結果を追加
+      item.append(
+        resultTitle,
+        resultTime,
+        resultDate
+      );
+
+
+      // 最初の説明文を削除
+      if (
+        results.children.length === 1 &&
+        results.firstElementChild.classList.contains("muted")
+      ) {
+        results.innerHTML = "";
+      }
+
+
+      // 新しい結果を一番上に追加
+      results.prepend(item);
+
+
+      // 測定終了
+      startTime = null;
+
+    });
+
+  </script>
+
+</body>
+</html>
